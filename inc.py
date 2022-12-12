@@ -4,13 +4,14 @@ import pygad
 import math
 import glob
 import pickle
+from random import seed
 from itertools import product
 from sklearn.neural_network import MLPRegressor
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.cluster import KMeans
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin, clone
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import train_test_split as sklearn_train_test_split
 from sklearn.feature_selection import mutual_info_regression
 from sklearn.pipeline import Pipeline
 from joblib import Parallel, delayed
@@ -332,105 +333,199 @@ def load_results():
     return results
 
 
-def CCSA(D, pop_size, fitness, max_iter, max_saturation=0):
-    lu = (-1 * np.ones(D), 1 * np.ones(D))
-    X = lu[0] + np.random.rand(pop_size, D) * (
-        np.tile(lu[1] - lu[0], pop_size).reshape(pop_size, D)
-    )
-    m = X.copy()
-    f = np.array([fitness(X[i, :]) for i in range(pop_size)])
-    f_best = f.copy()
-    m_g_f_best_index = np.argmin(f_best)
-    m_g_f_best = f_best[m_g_f_best_index]
-    m_g_best_pos = m[m_g_f_best_index, :]
-    f_best_history = [m_g_f_best]
-
-    for t in range(1, max_iter):
-        fl = 2.02 - t * ((1.08) / max_iter)
-
-        for i in range(pop_size):
-
-            # Generating neighborhood
-            out = []
-            alpha = 0.02
-            for k in range(pop_size):
-                if k != i:
-                    W = (alpha + (f[i] - f_best[k])) / np.sum(np.abs(f[i] - f_best[k]))
-                    out.append(euclidean(X[i, :], m[k, :]) * W)
-
-            out = np.array(out)
-            mu = np.mean(out)
-            neigh = np.argwhere(out < mu).reshape(1, -1)[0]
-            non_neigh = np.argwhere(out > mu).reshape(1, -1)[0]
-
-            Local = 0
-            if len(neigh) != 0:
-                Local = neigh[np.random.randint(len(neigh))]
-
-            Global = 0
-            if len(non_neigh) != 0:
-                Global = np.argmin(f_best[non_neigh])
-
-            if f_best[Local] < f_best[Global]:
-                # NLS Strategy
-                X[i, :] = X[i, :] + fl * np.random.rand(1, D) * (m[Local, :] - X[i, :])
-            else:
-                # NGS Strategy
-                X[i, :] = np.random.rand(1, D) * fl * (m[Global, :] - X[i, :])
-
-            X[i, :] = (
-                ((X[i, :] >= lu[0]) & (X[i, :] <= lu[1])) * X[i, :]
-                + (X[i, :] < lu[0])
-                * (lu[0] + 0.25 * (lu[1] - lu[0]) * np.random.rand(D))
-                + (X[i, :] > lu[1])
-                * (lu[1] - 0.25 * (lu[1] - lu[0]) * np.random.rand(D))
-            )
-
-            f[i] = fitness(X[i, :])
-
-            if f_best[i] < f[i]:
-                nstep = np.fix(np.random.rand(1) * D).astype(int)[0]
-                r0 = len([k for k in range(pop_size) if k != i])
-                X_r = X[np.random.randint(r0), :]
-                Nj = np.random.randint(50)
-
-                for j in range(Nj):
-                    wasfl = 2.02 - j * (1.08 / Nj)
-                    k = np.random.permutation(len(X[i, :]))[:nstep]
-                    Tmp = m[i, :]
-                    Tmp[k] = m_g_best_pos[k] + np.random.rand(len(k)) * wasfl * (
-                        X_r[k] - X[i, k]
-                    )
-                    Tmp = (
-                        ((Tmp >= lu[0]) & (Tmp <= lu[1])) * Tmp
-                        + (Tmp < lu[0])
-                        * (lu[0] + 0.25 * (lu[1] - lu[0]) * np.random.rand(len(Tmp)))
-                        + (Tmp > lu[1])
-                        * (lu[1] - 0.25 * (lu[1] - lu[0]) * np.random.rand(len(Tmp)))
-                    )
-
-                    f_Tmp = fitness(Tmp)
-
-                    if f_Tmp < f[i]:
-                        f[i] = f_Tmp
-                        X[i, :] = Tmp
-
-                    if f_Tmp < f_best[i]:
-                        f_best[i] = f_Tmp
-                        m[i, :] = Tmp
-
-            if f[i] < f_best[i]:
-                m[i, :] = X[i, :]
-                f_best[i] = f[i]
-
+def CCSA(D, pop_size, fitness, max_iter, **kwargs):
+    n_init = kwargs.get('n_init') or 10
+    max_saturation = kwargs.get('max_saturation')
+    
+    f_hist_result = None
+    sol_best_result = None
+    
+    for i in range(n_init):
+        lu = (-1 * np.ones(D), 1 * np.ones(D))
+        X = lu[0] + np.random.rand(pop_size, D) * (
+            np.tile(lu[1] - lu[0], pop_size).reshape(pop_size, D)
+        )
+        m = X.copy()
+        f = np.array([fitness(X[i, :]) for i in range(pop_size)])
+        f_best = f.copy()
         m_g_f_best_index = np.argmin(f_best)
         m_g_f_best = f_best[m_g_f_best_index]
         m_g_best_pos = m[m_g_f_best_index, :]
-        f_best_history.append(m_g_f_best)
+        f_best_history = [m_g_f_best]
 
-        if (max_saturation > 0) and (
-            len(np.unique(np.array(f_best_history[-1 * max_saturation :]))) == 1
-        ):
-            break
+        for t in range(1, max_iter):
+            fl = 2.02 - t * (1.08 / max_iter)
 
-    return m_g_best_pos, f_best_history
+            for i in range(pop_size):
+
+                # Generating neighborhood
+                out = []
+                alpha = 0.02
+                for k in range(pop_size):
+                    if k != i:
+                        W = (alpha + (f[i] - f_best[k])) / np.sum(np.abs(f[i] - f_best[k]))
+                        out.append(euclidean(X[i, :], m[k, :]) * W)
+
+                out = np.array(out)
+                mu = np.mean(out)
+                neigh = np.argwhere(out < mu).reshape(1, -1)[0]
+                non_neigh = np.argwhere(out > mu).reshape(1, -1)[0]
+
+                Local = 0
+                if len(neigh) != 0:
+                    Local = neigh[np.random.randint(len(neigh))]
+
+                Global = 0
+                if len(non_neigh) != 0:
+                    Global = np.argmin(f_best[non_neigh])
+
+                if f_best[Local] < f_best[Global]:
+                    # NLS Strategy
+                    X[i, :] = X[i, :] + fl * np.random.rand(1, D) * (m[Local, :] - X[i, :])
+                else:
+                    # NGS Strategy
+                    X[i, :] = np.random.rand(1, D) * fl * (m[Global, :] - X[i, :])
+
+                X[i, :] = (
+                    ((X[i, :] >= lu[0]) & (X[i, :] <= lu[1])) * X[i, :]
+                    + (X[i, :] < lu[0])
+                    * (lu[0] + 0.25 * (lu[1] - lu[0]) * np.random.rand(D))
+                    + (X[i, :] > lu[1])
+                    * (lu[1] - 0.25 * (lu[1] - lu[0]) * np.random.rand(D))
+                )
+
+                f[i] = fitness(X[i, :])
+
+                if f_best[i] < f[i]:
+                    nstep = np.fix(np.random.rand(1) * D).astype(int)[0]
+                    r0 = len([k for k in range(pop_size) if k != i])
+                    X_r = X[np.random.randint(r0), :]
+                    Nj = np.random.randint(50)
+
+                    for j in range(Nj):
+                        wasfl = 2.02 - j * (1.08 / Nj)
+                        k = np.random.permutation(len(X[i, :]))[:nstep]
+                        Tmp = m[i, :]
+                        Tmp[k] = m_g_best_pos[k] + np.random.rand(len(k)) * wasfl * (
+                            X_r[k] - X[i, k]
+                        )
+                        Tmp = (
+                            ((Tmp >= lu[0]) & (Tmp <= lu[1])) * Tmp
+                            + (Tmp < lu[0])
+                            * (lu[0] + 0.25 * (lu[1] - lu[0]) * np.random.rand(len(Tmp)))
+                            + (Tmp > lu[1])
+                            * (lu[1] - 0.25 * (lu[1] - lu[0]) * np.random.rand(len(Tmp)))
+                        )
+
+                        f_Tmp = fitness(Tmp)
+
+                        if f_Tmp < f[i]:
+                            f[i] = f_Tmp
+                            X[i, :] = Tmp
+
+                        if f_Tmp < f_best[i]:
+                            f_best[i] = f_Tmp
+                            m[i, :] = Tmp
+
+                if f[i] < f_best[i]:
+                    m[i, :] = X[i, :]
+                    f_best[i] = f[i]
+
+            m_g_f_best_index = np.argmin(f_best)
+            m_g_f_best = f_best[m_g_f_best_index]
+            m_g_best_pos = m[m_g_f_best_index, :]
+            f_best_history.append(m_g_f_best)
+            
+            if (max_saturation and max_saturation > 0) and (
+                len(np.unique(np.array(f_best_history[-1 * max_saturation :]))) == 1
+            ):
+                break
+
+        if f_hist_result is None or f_best_history[-1] < f_hist_result[-1]:
+            f_hist_result = f_best_history
+            sol_best_result = m_g_best_pos
+            
+    return sol_best_result, f_hist_result
+
+def CCSA_filter(X_train, y_train, pop_size=100, max_iter=100, n_init=10):
+    def f(i, j):
+        mi = mutual_info_regression(i.reshape(-1, 1), j)[0]
+        corr, _ = pearsonr(i, j)
+
+        return mi + abs(corr)
+
+    f_values = {}
+    ncols = X_train.shape[1]
+
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(f)(X_train[:, i], X_train[:, j])
+        for i in range(ncols - 1)
+        for j in range(i + 1, ncols)
+    )
+
+    index = 0
+    for i in range(ncols - 1):
+        for j in range(i + 1, ncols):
+            f_values[(i, j)] = results[index]
+            f_values[(j, i)] = results[index]
+            index += 1
+
+    results = Parallel(n_jobs=n_jobs)(delayed(f)(X_train[:, i], y_train) for i in range(ncols))
+
+    index = 0
+    for i in range(ncols):
+        f_values[("target", i)] = results[index]
+        index += 1
+
+    def ccsa_filter_fitness(solution):
+        selected = np.argwhere(np.array(solution) >= 0).ravel()
+        
+        f_features_target = 0
+        for idx in selected:
+            m = f_values[("target", idx)]
+            f_features_target += m
+
+        f_features = 0
+        count = 0
+        for i in range(len(selected) - 1):
+            for j in range(i + 1, len(selected)):
+                count += 1
+                m = f_values[(selected[i], selected[j])]
+                f_features += m
+
+        return -1 * (f_features_target - f_features)
+
+    sol, f_hist = CCSA(X_train.shape[1], pop_size, ccsa_filter_fitness, max_iter, n_init=n_init)
+            
+    return np.argwhere(np.array(sol) >= 0).ravel(), f_hist
+
+def CCSA_wrapper(X_train, y_train, model, pop_size=20, max_iter=100, n_init=10, random_state=None):
+    def ccsa_wrapper_fitness(solution):
+        if random_state:
+            np.random.seed(random_state)
+            seed(random_state)
+            
+        selected = np.argwhere(np.array(solution) >= 0).ravel()
+        
+        _X_train, _X_test, _y_train, _y_test = sklearn_train_test_split(
+            X_train[:,selected],
+            y_train,
+            test_size=0.2,
+            shuffle=False
+        )
+        
+        m = clone(model)
+        m_params = m.get_params()
+        
+        if 'random_state' in m_params:
+            m.set_params(random_state=random_state)
+
+        m.fit(_X_train, _y_train)
+        
+        return -1 * accuracy_score(_y_test, m.predict(_X_test))
+    
+    
+    sol, f_hist = CCSA(X_train.shape[1], pop_size, ccsa_wrapper_fitness, max_iter, n_init=n_init)
+            
+    return np.argwhere(np.array(sol) >= 0).ravel(), f_hist
+        
