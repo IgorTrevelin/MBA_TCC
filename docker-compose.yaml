@@ -1,0 +1,14 @@
+version: "2.4"
+
+services: 
+  jupyter_lab:
+    container_name: jupyter_lab
+    build: .
+    ports: 
+      - "8888:8888"
+    environment: 
+      - JUPYTER_ENABLE_LAB=yes
+    volumes: 
+      - .:/home/jovyan/work
+    cpu_count: 12
+    cpu_percent: 75

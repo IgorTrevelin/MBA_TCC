@@ -119,7 +119,7 @@ def genetic_filter(X, y):
 
 class GeneticWrapper(BaseEstimator, TransformerMixin):
     def __init__(self, model, validation_size=0.2):
-        self.model = clone(model)
+        self.model = model
         self.val_size = validation_size
 
     def fit(self, X, y):
