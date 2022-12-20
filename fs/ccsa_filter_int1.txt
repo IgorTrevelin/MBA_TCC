@@ -1,0 +1,48 @@
+Open
+Close_L1
+Open_L1
+High_L1
+Bitcoin USD Exchange Trade Volume_L1
+Bitcoin Cost Per Transaction_L1
+High_L2
+Direction_L2
+Bitcoin Total Transaction Fees USD_L2
+Bitcoin Cost Per Transaction_L2
+Open_L3
+Low_L3
+Bitcoin Total Transaction Fees USD_L3
+Bitcoin Hash Rate_L3
+Bitcoin Cost Per Transaction_L3
+Bitcoin Number of Transactions_L3
+Close_L4
+Open_L4
+High_L4
+Bitcoin Total Transaction Fees USD_L4
+Close_L5
+Low_L5
+Direction_L5
+Bitcoin Number of Transactions_L5
+Close_L6
+Open_L6
+Direction_L6
+Bitcoin USD Exchange Trade Volume_L6
+Bitcoin Hash Rate_L6
+Bitcoin Cost Per Transaction_L6
+Close_L7
+Low_L7
+Bitcoin Cost Per Transaction_L7
+Close_WMA30
+Low_WMA30
+Bitcoin Total Transaction Fees USD_WMA30
+Bitcoin USD Exchange Trade Volume_WMA30
+Bitcoin Hash Rate_WMA30
+Crude Oil_WMA30
+Gold_WMA30
+Silver_WMA30
+Natural Gas_WMA30
+Copper_WMA30
+Cocoa_WMA30
+Sugar_WMA30
+Oat_WMA30
+NASDAQ Future_WMA30
+S&P500 Future_WMA30

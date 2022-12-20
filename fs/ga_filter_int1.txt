@@ -1,0 +1,35 @@
+Direction_L1
+Bitcoin Total Transaction Fees USD_L1
+Bitcoin USD Exchange Trade Volume_L1
+Bitcoin Cost Per Transaction_L1
+Low_L2
+Bitcoin Total Transaction Fees USD_L2
+Bitcoin Number of Transactions_L2
+Open_L3
+Bitcoin USD Exchange Trade Volume_L3
+Bitcoin Number of Transactions_L3
+High_L4
+Bitcoin Total Transaction Fees USD_L4
+Bitcoin Number of Transactions_L4
+High_L5
+Bitcoin Total Transaction Fees USD_L5
+Bitcoin Number of Transactions_L5
+Close_L6
+High_L6
+Low_L6
+Bitcoin Total Transaction Fees USD_L6
+Bitcoin USD Exchange Trade Volume_L6
+Bitcoin Hash Rate_L6
+Bitcoin Number of Transactions_L6
+Direction_L7
+Bitcoin Number of Transactions_L7
+Open_WMA30
+Low_WMA30
+Bitcoin Total Transaction Fees USD_WMA30
+Bitcoin USD Exchange Trade Volume_WMA30
+Gold_WMA30
+Silver_WMA30
+Coffee_WMA30
+Palladium_WMA30
+Copper_WMA30
+KOSPI Index_WMA30
